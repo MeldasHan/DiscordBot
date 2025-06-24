@@ -6,6 +6,7 @@ from discord.ui import View, Button
 import requests
 from dotenv import load_dotenv
 from keep_alive import keep_alive
+from datetime import datetime, timedelta
 
 load_dotenv()
 
@@ -25,47 +26,48 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 attendance_data = {}
 
 class AttendanceView(View):
-    def __init__(self):
+    def __init__(self, interaction: Interaction):
         super().__init__(timeout=None)
 
-    async def handle_selection(self, interaction: Interaction, time_label: str):
-        member = interaction.guild.get_member(interaction.user.id)
-        user = member.display_name if member else interaction.user.name
+        # 預設 UTC offset，可依 interaction.locale 更進一步判斷（此處預設 +8）
+        self.offset = self._estimate_utc_offset(interaction)
 
-        if user in attendance_data:
-            await interaction.response.send_message(f"{user} 已經出席過囉！", ephemeral=False)
+        # 對應的原始時間（不變）
+        time_options = ["19:30", "19:45", "20:00"]
+        for t in time_options:
+            label = self._convert_time_label(t)
+            self.add_item(self._make_button(label, t, ButtonStyle.primary))
+
+        self.add_item(self._make_button("領土期間", "領土期間", ButtonStyle.secondary))
+        self.add_item(self._make_button("無法出席", "無法出席", ButtonStyle.danger))
+
+    def _convert_time_label(self, base_time_str):
+        base_time = datetime.strptime(base_time_str, "%H:%M")
+        local_time = base_time + timedelta(hours=self.offset)
+        return local_time.strftime("%H:%M")
+
+    def _estimate_utc_offset(self, interaction):
+        # 這邊可根據語系做簡單推論，例如 zh-TW -> +8、ja -> +9
+        locale = str(interaction.locale)
+        if "zh" in locale:
+            return 8
+        elif "ja" in locale:
+            return 9
+        elif "ko" in locale:
+            return 9
+        elif "en" in locale:
+            return 0  # 英文預設為 UTC
         else:
-            attendance_data[user] = time_label
-            data = {
-                DISCORD_NAME_ENTRY: user,
-                TIME_ENTRY: time_label,
-            }
-            response = requests.post(GOOGLE_FORM_URL, data=data)
-            await interaction.response.send_message(
-                f"✅ {user} 選擇了：{time_label}，出席已登記", ephemeral=True
-            )
-            print(f"📨 Submitted for {user}: {time_label} - Status: {response.status_code}")
+            return 8  # fallback 預設為 +8
 
-    @discord.ui.button(label="19:30", style=ButtonStyle.primary)
-    async def btn_1930(self, interaction: Interaction, button: Button):
-        await self.handle_selection(interaction, "19:30")
+    def _make_button(self, label, time_value, style):
+        # 建立按鈕時綁定 callback
+        async def callback(interaction: Interaction):
+            await self.handle_selection(interaction, time_value)
 
-    @discord.ui.button(label="19:45", style=ButtonStyle.primary)
-    async def btn_1945(self, interaction: Interaction, button: Button):
-        await self.handle_selection(interaction, "19:45")
-
-    @discord.ui.button(label="20:00", style=ButtonStyle.primary)
-    async def btn_2000(self, interaction: Interaction, button: Button):
-        await self.handle_selection(interaction, "20:00")
-
-    @discord.ui.button(label="領土期間", style=ButtonStyle.secondary)
-    async def btn_領土(self, interaction: Interaction, button: Button):
-        await self.handle_selection(interaction, "領土期間")
-
-    @discord.ui.button(label="無法出席", style=ButtonStyle.danger)
-    async def btn_無法(self, interaction: Interaction, button: Button):
-        await self.handle_selection(interaction, "無法出席")
-
+        button = Button(label=label, style=style)
+        button.callback = callback
+        return button
 
 @bot.event
 async def on_ready():
@@ -90,6 +92,29 @@ async def 清空出席(interaction: discord.Interaction):
 
     attendance_data.clear()
     await interaction.response.send_message("✅ 所有出席資料已清空", ephemeral=False)
+    
+@bot.tree.command(name="簽到統計", description="查看某身分組的簽到人數")
+@app_commands.describe(role="想要統計的身分組")
+async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("❌ 你沒有權限使用這個指令。", ephemeral=True)
+        return
+
+    guild = interaction.guild
+    total = 0
+    matched_names = []
+
+    for member in role.members:
+        uid = str(member.id)
+        if uid in attendance_data:
+            total += 1
+            matched_names.append(member.display_name)
+
+    await interaction.response.send_message(
+        f"📊 身分組 **{role.name}** 中共有 **{total}** 人簽到過。\n"
+        f"{'、'.join(matched_names) if matched_names else '（無人簽到）'}",
+        ephemeral=True
+    )
 
 @bot.command()
 async def clear_attendance(ctx):
