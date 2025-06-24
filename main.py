@@ -34,7 +34,7 @@ class AttendanceView(View):
         self.offset = self._estimate_utc_offset(interaction)
 
         # 對應的原始時間（送出的固定值）
-        time_options = ["19:30", "19:45", "20:00"]
+        time_options = ["11:30", "11:45", "12:00"]
         for t in time_options:
             label = self._convert_time_label(t)
             self.add_item(self._make_button(label, t, ButtonStyle.primary))
