@@ -30,10 +30,10 @@ class AttendanceView(View):
     def __init__(self, interaction: Interaction):
         super().__init__(timeout=None)
 
-        # 預設 UTC offset，可依 interaction.locale 更進一步判斷（此處預設 +8）
+        # 預設 UTC offset，可依 interaction.locale 判斷
         self.offset = self._estimate_utc_offset(interaction)
 
-        # 對應的原始時間（不變）
+        # 對應的原始時間（送出的固定值）
         time_options = ["19:30", "19:45", "20:00"]
         for t in time_options:
             label = self._convert_time_label(t)
@@ -48,7 +48,6 @@ class AttendanceView(View):
         return local_time.strftime("%H:%M")
 
     def _estimate_utc_offset(self, interaction):
-        # 這邊可根據語系做簡單推論，例如 zh-TW -> +8、ja -> +9
         locale = str(interaction.locale)
         if "zh" in locale:
             return 8
@@ -57,18 +56,37 @@ class AttendanceView(View):
         elif "ko" in locale:
             return 9
         elif "en" in locale:
-            return 0  # 英文預設為 UTC
+            return 0
         else:
-            return 8  # fallback 預設為 +8
+            return 8  # 預設 +8（台灣）
 
     def _make_button(self, label, time_value, style):
-    async def callback(interaction: Interaction):
-        view = interaction.view  # ✅ 取得原本的 View（就是 AttendanceView）
-        await view.handle_selection(interaction, time_value)
+        async def callback(interaction: Interaction):
+            view = interaction.view  # 取得原始 AttendanceView
+            await view.handle_selection(interaction, time_value)
 
-    button = Button(label=label, style=style)
-    button.callback = callback
-    return button
+        button = Button(label=label, style=style)
+        button.callback = callback
+        return button
+
+    async def handle_selection(self, interaction: Interaction, time_label: str):
+        member = interaction.guild.get_member(interaction.user.id)
+        user = member.display_name if member else interaction.user.name
+        user_id = interaction.user.id
+
+        if user_id in attendance_data:
+            await interaction.response.send_message(f"{user} 已經出席過囉！", ephemeral=True)
+        else:
+            attendance_data[user_id] = time_label
+            data = {
+                DISCORD_NAME_ENTRY: user,
+                TIME_ENTRY: time_label,
+            }
+            response = requests.post(GOOGLE_FORM_URL, data=data)
+            await interaction.response.send_message(
+                f"✅ {user} 選擇了：{time_label}，出席已登記", ephemeral=True
+            )
+            print(f"📨 Submitted for {user}: {time_label} - Status: {response.status_code}")
 
 @bot.event
 async def on_ready():
