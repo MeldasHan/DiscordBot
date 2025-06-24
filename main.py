@@ -31,40 +31,45 @@ class AttendanceView(View):
     def __init__(self, interaction: Interaction):
         super().__init__(timeout=None)
 
-        self.locale = str(interaction.locale)
-        self.offset = self._estimate_utc_offset()
-        self.texts = self._get_locale_texts()
+        # 預設 UTC offset，可依 interaction.locale 判斷
+        self.offset = self._estimate_utc_offset(interaction)
 
+        # 對應的原始時間（送出的固定值）
         time_options = ["19:30", "19:45", "20:00"]
         for t in time_options:
             label = self._convert_time_label(t)
             self.add_item(self._make_button(label, t, ButtonStyle.primary))
 
-        self.add_item(self._make_button(self.texts["during_war"], "領土期間", ButtonStyle.secondary))
-        self.add_item(self._make_button(self.texts["cannot_attend"], "無法出席", ButtonStyle.danger))
+        self.add_item(self._make_button("領土期間", "領土期間", ButtonStyle.secondary))
+        self.add_item(self._make_button("無法出席", "無法出席", ButtonStyle.danger))
 
-    def _estimate_utc_offset(self):
-        if "ja" in self.locale:
-            return 1  # JST (UTC+9) - UTC+8
-        return 0  # 預設台灣
+    def _convert_time_label(self, base_time_str):
+        base_time = datetime.strptime(base_time_str, "%H:%M")
+        local_time = base_time + timedelta(hours=self.offset)
+        return local_time.strftime("%H:%M")
 
-    def _get_locale_texts(self):
-        if "ja" in self.locale:
-            return {
-                "already_checked": "あなたはすでに出席済みです！",
-                "select_time": "出席時間を選択してください 👇",
-                "success": "✅ {user} さんは {time} を選びました。出席登録完了！",
-                "during_war": "領土戦の間",
-                "cannot_attend": "欠席"
-            }
+    def _estimate_utc_offset(self, interaction):
+        locale = str(interaction.locale)
+        if "zh" in locale:
+            return 8 - 8
+        elif "ja" in locale:
+            return 9 - 8
+        elif "ko" in locale:
+            return 9 - 8
+        elif "en" in locale:
+            return 0 - 8
         else:
-            return {
-                "already_checked": "{user} 已經出席過囉！",
-                "select_time": "請選擇你的出席時間 👇",
-                "success": "✅ {user} 選擇了：{time}，出席已登記",
-                "during_war": "領土期間",
-                "cannot_attend": "無法出席"
-            }
+            return 0 # 預設 +8（台灣）
+
+    def _make_button(self, label, time_value, style):
+        view_self = self  # 🔁 把 self 存到 closure 變數中
+
+        async def callback(interaction: Interaction):
+            await view_self.handle_selection(interaction, time_value)
+
+        button = Button(label=label, style=style)
+        button.callback = callback
+        return button
 
     async def handle_selection(self, interaction: Interaction, time_label: str):
         member = interaction.guild.get_member(interaction.user.id)
@@ -72,19 +77,23 @@ class AttendanceView(View):
         user_id = interaction.user.id
 
         if user_id in attendance_data:
-            await interaction.response.send_message(
-                self.texts["already_checked"].format(user=user), ephemeral=True)
+            await interaction.response.send_message(f"{user} 已經出席過囉！", ephemeral=True)
         else:
             attendance_data[user_id] = time_label
 
+            # 轉換顯示用的帶時區時間字串
+            base_time = datetime.strptime(time_label, "%H:%M")
+            local_time = base_time + timedelta(hours=self.offset)
+
             data = {
                 DISCORD_NAME_ENTRY: user,
-                TIME_ENTRY: time_label,
+                TIME_ENTRY: time_label,  # 送表單用的是原始時間，不變
             }
             response = requests.post(GOOGLE_FORM_URL, data=data)
             await interaction.response.send_message(
-                self.texts["success"].format(user=user, time=time_label), ephemeral=True
+                f"✅ {user} 選擇了：{time_label}，出席已登記", ephemeral=True
             )
+            print(f"📨 Submitted for {user}: {time_label} - Status: {response.status_code}")
 
 @bot.event
 async def on_ready():
@@ -97,9 +106,11 @@ async def on_ready():
 
 @bot.tree.command(name="出席", description="出席說明")
 async def 出席(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=False)  # 👈 先佔住，避免 3 秒 timeout
+
     view = AttendanceView(interaction)
-    await interaction.response.send_message(view.texts["select_time"], view=view, ephemeral=False)
-  
+    await interaction.followup.send("請選擇你的出席時間 👇", view=view, ephemeral=False)
+    
 @bot.tree.command(name="清空出席", description="清空所有出席資料")
 async def 清空出席(interaction: discord.Interaction):
     allowed_role_ids = [983698693431640064, 1229072929636093973, 983703371871563807, 983708819215482911, 1103689405752954960, 1317669500644229130]  # 多個身分組ID
