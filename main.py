@@ -74,6 +74,7 @@ async def 出席(interaction: discord.Interaction):
 async def clear_attendance(ctx):
     attendance_data.clear()
     await ctx.send("✅ 所有簽到資料已清除")
-
+    
+print(f"環境變數 TOKEN: {TOKEN}")
 bot.run(TOKEN)
 
