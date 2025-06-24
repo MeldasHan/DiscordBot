@@ -100,8 +100,10 @@ async def on_ready():
 
 @bot.tree.command(name="出席", description="出席說明")
 async def 出席(interaction: discord.Interaction):
-    view = AttendanceView(interaction)  # ✅ 傳入 interaction
-    await interaction.response.send_message("請選擇你的出席時間 👇", view=view)
+    await interaction.response.defer(ephemeral=True)  # 👈 先佔住，避免 3 秒 timeout
+
+    view = AttendanceView(interaction)
+    await interaction.followup.send("請選擇你的出席時間 👇", view=view, ephemeral=True))
     
 @bot.tree.command(name="清空出席", description="清空所有出席資料")
 async def 清空出席(interaction: discord.Interaction):
