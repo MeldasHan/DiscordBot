@@ -113,15 +113,22 @@ async def 出席(interaction: discord.Interaction):
     
 @bot.tree.command(name="清空出席", description="清空所有出席資料")
 async def 清空出席(interaction: discord.Interaction):
-    allowed_role_ids = [983698693431640064, 1229072929636093973, 983703371871563807, 983708819215482911, 1103689405752954960, 1317669500644229130]  # 多個身分組ID
+    allowed_role_ids = [
+        983698693431640064, 1229072929636093973,
+        983703371871563807, 983708819215482911,
+        1103689405752954960, 1317669500644229130
+    ]
+
+    # ✅ 預先 defer response，避免 3 秒 timeout，同時讓後續可以用 followup 回應
+    await interaction.response.defer(ephemeral=False)
 
     if not interaction.user.guild_permissions.administrator:
         if not any(r.id in allowed_role_ids for r in interaction.user.roles):
-            await interaction.response.send_message("❌ 你沒有權限清空出席資料。", ephemeral=True)
+            await interaction.followup.send("❌ 你沒有權限清空出席資料。", ephemeral=True)
             return
 
     attendance_data.clear()
-    # 呼叫 Google Apps Script 清除回覆
+
     try:
         res = requests.get(GOOGLE_SCRIPT_URL)
         if res.status_code == 200:
@@ -130,7 +137,9 @@ async def 清空出席(interaction: discord.Interaction):
             print(f"⚠️ Google 表單清除失敗：{res.status_code}")
     except Exception as e:
         print(f"❌ 無法連線到 Google Script：{e}")
-    await interaction.response.send_message("✅ 所有出席資料已清空", ephemeral=False)
+
+    # ✅ 改用 followup.send，而不是 response.send_message
+    await interaction.followup.send("✅ 所有出席資料已清空", ephemeral=False)
     
 @bot.tree.command(name="簽到統計", description="查看某身分組的簽到與未簽到成員")
 @app_commands.describe(role="想要統計的身分組")
