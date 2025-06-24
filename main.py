@@ -76,14 +76,9 @@ async def on_ready():
         print(f"❌ 同步指令失敗: {e}")
 
 @bot.tree.command(name="出席", description="出席說明")
-async def 出席(interaction: Interaction):
-    user = str(interaction.user)
-    view = AttendanceView(user)
-    await interaction.response.send_message(
-        f"{user} 請選擇你要出席的時間 👇",
-        view=view,
-        ephemeral=True
-    )
+async def 出席(interaction: discord.Interaction):
+    view = AttendanceView()  # ✅ 不傳 user
+    await interaction.response.send_message("請選擇你的出席時間 👇", view=view)
     
 @bot.tree.command(name="清空出席", description="清空所有出席資料")
 async def 清空出席(interaction: discord.Interaction):
