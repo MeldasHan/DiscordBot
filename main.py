@@ -1,13 +1,15 @@
 import os
 import discord
 from discord.ext import commands
+from discord import Interaction, ButtonStyle
+from discord.ui import View, Button
 import requests
 from dotenv import load_dotenv
 from keep_alive import keep_alive
 
 load_dotenv()
 
-TOKEN = os.getenv("DISCORD_TOKEN")  # 請確認 .env 裡是 TOKEN，不是 DISCORD_TOKEN
+TOKEN = os.getenv("DISCORD_TOKEN")
 GOOGLE_FORM_URL = os.getenv("GOOGLE_FORM_URL")
 DISCORD_NAME_ENTRY = os.getenv("DISCORD_NAME_ENTRY")
 TIME_ENTRY = os.getenv("TIME_ENTRY")
@@ -22,13 +24,44 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 attendance_data = {}
 
-emoji_time_map = {
-    "🇦": "19:30",
-    "🇧": "19:45",
-    "🇨": "20:00",
-    "🇩": "領土期間",
-    "🇪": "無法參加",
-}
+class AttendanceView(View):
+    def __init__(self, user):
+        super().__init__(timeout=None)
+        self.user = user
+
+    async def handle_selection(self, interaction: Interaction, time_label: str):
+        if self.user in attendance_data:
+            await interaction.response.send_message(f"{self.user} 已經出席過囉！", ephemeral=True)
+        else:
+            attendance_data[self.user] = time_label
+            data = {
+                DISCORD_NAME_ENTRY: self.user,
+                TIME_ENTRY: time_label,
+            }
+            response = requests.post(GOOGLE_FORM_URL, data=data)
+            await interaction.response.send_message(f"{self.user} 選擇了：{time_label}，已成功登記 ✅", ephemeral=True)
+            print(f"📨 Submitted for {self.user}: {time_label} - Status: {response.status_code}")
+
+    @discord.ui.button(label="19:30", style=ButtonStyle.primary)
+    async def btn_1930(self, interaction: Interaction, button: Button):
+        await self.handle_selection(interaction, "19:30")
+
+    @discord.ui.button(label="19:45", style=ButtonStyle.primary)
+    async def btn_1945(self, interaction: Interaction, button: Button):
+        await self.handle_selection(interaction, "19:45")
+
+    @discord.ui.button(label="20:00", style=ButtonStyle.primary)
+    async def btn_2000(self, interaction: Interaction, button: Button):
+        await self.handle_selection(interaction, "20:00")
+
+    @discord.ui.button(label="領土期間", style=ButtonStyle.secondary)
+    async def btn_領土(self, interaction: Interaction, button: Button):
+        await self.handle_selection(interaction, "領土期間")
+
+    @discord.ui.button(label="無法出席", style=ButtonStyle.danger)
+    async def btn_無法(self, interaction: Interaction, button: Button):
+        await self.handle_selection(interaction, "無法出席")
+
 
 @bot.event
 async def on_ready():
@@ -39,44 +72,21 @@ async def on_ready():
     except Exception as e:
         print(f"❌ 同步指令失敗: {e}")
 
-@bot.event
-async def on_raw_reaction_add(payload):
-    if payload.user_id == bot.user.id:
-        return
-
-    guild = bot.get_guild(payload.guild_id)
-    member = guild.get_member(payload.user_id)
-    username = str(member)
-
-    if username in attendance_data:
-        return
-
-    emoji = str(payload.emoji)
-    if emoji in emoji_time_map:
-        selected_time = emoji_time_map[emoji]
-        attendance_data[username] = selected_time
-
-        data = {
-            DISCORD_NAME_ENTRY: username,
-            TIME_ENTRY: selected_time,
-        }
-        response = requests.post(GOOGLE_FORM_URL, data=data)
-        print(f"📨 Submitted for {username}: {selected_time} - Status: {response.status_code}")
-
 @bot.tree.command(name="出席", description="出席說明")
-async def 出席(interaction: discord.Interaction):
+async def 出席(interaction: Interaction):
     user = str(interaction.user)
-    if user in attendance_data:
-        await interaction.response.send_message(f"{user} 已經出席過囉！", ephemeral=True)
-    else:
-        await interaction.response.send_message(f"{user} 請點選訊息上的表情符號完成出席喔 👇", ephemeral=True)
+    view = AttendanceView(user)
+    await interaction.response.send_message(
+        f"{user} 請選擇你要出席的時間 👇",
+        view=view,
+        ephemeral=True
+    )
 
 @bot.command()
 async def clear_attendance(ctx):
     attendance_data.clear()
     await ctx.send("✅ 所有簽到資料已清除")
-    
-print(f"環境變數 TOKEN: {TOKEN}")
-bot.run(TOKEN)
-keep_alive()
 
+print(f"環境變數 TOKEN: {TOKEN}")
+keep_alive()
+bot.run(TOKEN)
