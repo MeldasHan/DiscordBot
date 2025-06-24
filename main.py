@@ -3,6 +3,7 @@ import discord
 from discord.ext import commands
 import requests
 from dotenv import load_dotenv
+from keep_alive import keep_alive
 
 load_dotenv()
 
@@ -77,4 +78,5 @@ async def clear_attendance(ctx):
     
 print(f"環境變數 TOKEN: {TOKEN}")
 bot.run(TOKEN)
+keep_alive()
 
