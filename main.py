@@ -62,13 +62,13 @@ class AttendanceView(View):
             return 8  # fallback 預設為 +8
 
     def _make_button(self, label, time_value, style):
-        # 建立按鈕時綁定 callback
-        async def callback(interaction: Interaction):
-            await self.handle_selection(interaction, time_value)
+    async def callback(interaction: Interaction):
+        view = interaction.view  # ✅ 取得原本的 View（就是 AttendanceView）
+        await view.handle_selection(interaction, time_value)
 
-        button = Button(label=label, style=style)
-        button.callback = callback
-        return button
+    button = Button(label=label, style=style)
+    button.callback = callback
+    return button
 
 @bot.event
 async def on_ready():
