@@ -144,7 +144,7 @@ async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
         f"{'、'.join(not_signed_in) if not_signed_in else '（全員簽到）'}"
     )
 
-    await interaction.response.send_message(msg, ephemeral=True)
+    await interaction.response.send_message(msg, ephemeral=False)
 
 @bot.command()
 async def clear_attendance(ctx):
