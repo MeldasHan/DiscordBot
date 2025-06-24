@@ -34,7 +34,7 @@ class AttendanceView(View):
         self.offset = self._estimate_utc_offset(interaction)
 
         # 對應的原始時間（送出的固定值）
-        time_options = ["11:30", "11:45", "12:00"]
+        time_options = ["19:30", "19:45", "20:00"]
         for t in time_options:
             label = self._convert_time_label(t)
             self.add_item(self._make_button(label, t, ButtonStyle.primary))
@@ -50,15 +50,15 @@ class AttendanceView(View):
     def _estimate_utc_offset(self, interaction):
         locale = str(interaction.locale)
         if "zh" in locale:
-            return 8
+            return 8 - 8
         elif "ja" in locale:
-            return 9
+            return 9 - 8
         elif "ko" in locale:
-            return 9
+            return 9 - 8
         elif "en" in locale:
-            return 0
+            return 0 - 8
         else:
-            return 8  # 預設 +8（台灣）
+            return 0 # 預設 +8（台灣）
 
     def _make_button(self, label, time_value, style):
         view_self = self  # 🔁 把 self 存到 closure 變數中
@@ -79,13 +79,19 @@ class AttendanceView(View):
             await interaction.response.send_message(f"{user} 已經出席過囉！", ephemeral=True)
         else:
             attendance_data[user_id] = time_label
+
+            # 轉換顯示用的帶時區時間字串
+            base_time = datetime.strptime(time_label, "%H:%M")
+            local_time = base_time + timedelta(hours=self.offset)
+            time_label_with_tz = f"{local_time.strftime('%H:%M')} (UTC{self.offset:+d})"
+
             data = {
                 DISCORD_NAME_ENTRY: user,
-                TIME_ENTRY: time_label,
+                TIME_ENTRY: time_label,  # 送表單用的是原始時間，不變
             }
             response = requests.post(GOOGLE_FORM_URL, data=data)
             await interaction.response.send_message(
-                f"✅ {user} 選擇了：{time_label}，出席已登記", ephemeral=True
+                f"✅ {user} 選擇了：{time_label_with_tz}，出席已登記", ephemeral=True
             )
             print(f"📨 Submitted for {user}: {time_label} - Status: {response.status_code}")
 
