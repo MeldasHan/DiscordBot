@@ -83,7 +83,6 @@ class AttendanceView(View):
             # 轉換顯示用的帶時區時間字串
             base_time = datetime.strptime(time_label, "%H:%M")
             local_time = base_time + timedelta(hours=self.offset)
-            time_label_with_tz = f"{local_time.strftime('%H:%M')} (UTC{self.offset:+d})"
 
             data = {
                 DISCORD_NAME_ENTRY: user,
@@ -91,7 +90,7 @@ class AttendanceView(View):
             }
             response = requests.post(GOOGLE_FORM_URL, data=data)
             await interaction.response.send_message(
-                f"✅ {user} 選擇了：{time_label_with_tz}，出席已登記", ephemeral=True
+                f"✅ {user} 選擇了：{time_label}，出席已登記", ephemeral=True
             )
             print(f"📨 Submitted for {user}: {time_label} - Status: {response.status_code}")
 
@@ -133,7 +132,8 @@ async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
     matched_names = []
 
     for member in role.members:
-        uid = str(member.id)
+        print(f"Member: {member.display_name} - ID: {member.id} - In attendance_data? {member.id in attendance_data}")
+        uid = member.id
         if uid in attendance_data:
             total += 1
             matched_names.append(member.display_name)
