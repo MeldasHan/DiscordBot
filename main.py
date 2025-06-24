@@ -61,9 +61,10 @@ class AttendanceView(View):
             return 8  # 預設 +8（台灣）
 
     def _make_button(self, label, time_value, style):
+        view_self = self  # 🔁 把 self 存到 closure 變數中
+
         async def callback(interaction: Interaction):
-            view = interaction.view  # 取得原始 AttendanceView
-            await view.handle_selection(interaction, time_value)
+            await view_self.handle_selection(interaction, time_value)
 
         button = Button(label=label, style=style)
         button.callback = callback
