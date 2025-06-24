@@ -27,14 +27,38 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 attendance_data = {}
 
+def get_locale_text(locale: str):
+    if "ja" in locale:
+        return {
+            "select_prompt": "出席時間を選んでください 👇",
+            "already_checked": "あなたは既に出席しています！",
+            "checked_success": "✅ {user} が「{time}」を選択しました。出席を記録しました。",
+            "cleared": "✅ 出席データをすべてクリアしました。",
+            "no_permission_clear": "❌ 出席データをクリアする権限がありません。",
+            "no_permission": "❌ この操作を実行する権限がありません。",
+            "signed_in": "✅ 出席済み：{count}人\n{list}",
+            "not_signed_in": "❌ 未出席：{count}人\n{list}",
+            "group_summary": "📊 ロール「{role}」の出席状況：\n{signed}\n\n{not_signed}",
+        }
+    else:
+        return {
+            "select_prompt": "請選擇你的出席時間 👇",
+            "already_checked": "{user} 已經出席過囉！",
+            "checked_success": "✅ {user} 選擇了：{time}，出席已登記",
+            "cleared": "✅ 所有出席資料已清空",
+            "no_permission_clear": "❌ 你沒有權限清空出席資料。",
+            "no_permission": "❌ 你沒有權限使用這個指令。",
+            "signed_in": "✅ 已簽到：{count} 人\n{list}",
+            "not_signed_in": "❌ 未簽到：{count} 人\n{list}",
+            "group_summary": "📊 身分組 **{role}** 簽到狀況：\n{signed}\n\n{not_signed}",
+        }
+
 class AttendanceView(View):
     def __init__(self, interaction: Interaction):
         super().__init__(timeout=None)
-
-        # 預設 UTC offset，可依 interaction.locale 判斷
         self.offset = self._estimate_utc_offset(interaction)
+        self.locale = str(interaction.locale)
 
-        # 對應的原始時間（送出的固定值）
         time_options = ["19:30", "19:45", "20:00"]
         for t in time_options:
             label = self._convert_time_label(t)
@@ -52,17 +76,15 @@ class AttendanceView(View):
         locale = str(interaction.locale)
         if "zh" in locale:
             return 8 - 8
-        elif "ja" in locale:
-            return 9 - 8
-        elif "ko" in locale:
+        elif "ja" in locale or "ko" in locale:
             return 9 - 8
         elif "en" in locale:
             return 0 - 8
         else:
-            return 0 # 預設 +8（台灣）
+            return 0
 
     def _make_button(self, label, time_value, style):
-        view_self = self  # 🔁 把 self 存到 closure 變數中
+        view_self = self
 
         async def callback(interaction: Interaction):
             await view_self.handle_selection(interaction, time_value)
@@ -72,26 +94,25 @@ class AttendanceView(View):
         return button
 
     async def handle_selection(self, interaction: Interaction, time_label: str):
+        texts = get_locale_text(str(interaction.locale))
         member = interaction.guild.get_member(interaction.user.id)
         user = member.display_name if member else interaction.user.name
         user_id = interaction.user.id
 
         if user_id in attendance_data:
-            await interaction.response.send_message(f"{user} 已經出席過囉！", ephemeral=True)
+            await interaction.response.send_message(
+                texts["already_checked"].replace("{user}", user), ephemeral=True
+            )
         else:
             attendance_data[user_id] = time_label
 
-            # 轉換顯示用的帶時區時間字串
-            base_time = datetime.strptime(time_label, "%H:%M")
-            local_time = base_time + timedelta(hours=self.offset)
-
             data = {
                 DISCORD_NAME_ENTRY: user,
-                TIME_ENTRY: time_label,  # 送表單用的是原始時間，不變
+                TIME_ENTRY: time_label,
             }
             response = requests.post(GOOGLE_FORM_URL, data=data)
             await interaction.response.send_message(
-                f"✅ {user} 選擇了：{time_label}，出席已登記", ephemeral=True
+                texts["checked_success"].format(user=user, time=time_label), ephemeral=True
             )
             print(f"📨 Submitted for {user}: {time_label} - Status: {response.status_code}")
 
@@ -106,10 +127,10 @@ async def on_ready():
 
 @bot.tree.command(name="出席", description="出席說明")
 async def 出席(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=False)  # 👈 先佔住，避免 3 秒 timeout
-
+    texts = get_locale_text(str(interaction.locale))
+    await interaction.response.defer(ephemeral=False)
     view = AttendanceView(interaction)
-    await interaction.followup.send("請選擇你的出席時間 👇", view=view, ephemeral=False)
+    await interaction.followup.send(texts["select_prompt"], view=view, ephemeral=False)
     
 @bot.tree.command(name="清空出席", description="清空所有出席資料")
 async def 清空出席(interaction: discord.Interaction):
