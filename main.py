@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-TOKEN = os.getenv("TOKEN")  # 請確認 .env 裡是 TOKEN，不是 DISCORD_TOKEN
+TOKEN = os.getenv("DISCORD_TOKEN")  # 請確認 .env 裡是 TOKEN，不是 DISCORD_TOKEN
 GOOGLE_FORM_URL = os.getenv("GOOGLE_FORM_URL")
 DISCORD_NAME_ENTRY = os.getenv("DISCORD_NAME_ENTRY")
 TIME_ENTRY = os.getenv("TIME_ENTRY")
