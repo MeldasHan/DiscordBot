@@ -105,7 +105,7 @@ async def on_ready():
 
 @bot.tree.command(name="出席", description="出席說明")
 async def 出席(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=True)  # 👈 先佔住，避免 3 秒 timeout
+    await interaction.response.defer(ephemeral=False)  # 👈 先佔住，避免 3 秒 timeout
 
     view = AttendanceView(interaction)
     await interaction.followup.send("請選擇你的出席時間 👇", view=view, ephemeral=False)
