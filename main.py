@@ -29,7 +29,8 @@ class AttendanceView(View):
         super().__init__(timeout=None)
 
     async def handle_selection(self, interaction: Interaction, time_label: str):
-        user = str(interaction.user)
+        member = interaction.guild.get_member(interaction.user.id)
+        user = member.display_name if member else interaction.user.name
 
         if user in attendance_data:
             await interaction.response.send_message(f"{user} 已經出席過囉！", ephemeral=True)
