@@ -84,6 +84,16 @@ async def 出席(interaction: Interaction):
         view=view,
         ephemeral=True
     )
+    
+@bot.tree.command(name="清空出席", description="清空所有出席資料")
+async def 清空出席(interaction: discord.Interaction):
+    # 檢查是否有管理員權限（可選）
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("❌ 你沒有權限清空出席資料。", ephemeral=True)
+        return
+
+    attendance_data.clear()
+    await interaction.response.send_message("✅ 所有出席資料已清空", ephemeral=False)
 
 @bot.command()
 async def clear_attendance(ctx):
