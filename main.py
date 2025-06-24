@@ -13,6 +13,7 @@ load_dotenv()
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 GOOGLE_FORM_URL = os.getenv("GOOGLE_FORM_URL")
+GOOGLE_SCRIPT_URL = os.getenv("GOOGLE_SCRIPT_URL")
 DISCORD_NAME_ENTRY = os.getenv("DISCORD_NAME_ENTRY")
 TIME_ENTRY = os.getenv("TIME_ENTRY")
 
@@ -120,6 +121,15 @@ async def 清空出席(interaction: discord.Interaction):
             return
 
     attendance_data.clear()
+    # 呼叫 Google Apps Script 清除回覆
+    try:
+        res = requests.get(GOOGLE_SCRIPT_URL)
+        if res.status_code == 200:
+            print("✅ Google 表單回覆已清除")
+        else:
+            print(f"⚠️ Google 表單清除失敗：{res.status_code}")
+    except Exception as e:
+        print(f"❌ 無法連線到 Google Script：{e}")
     await interaction.response.send_message("✅ 所有出席資料已清空", ephemeral=False)
     
 @bot.tree.command(name="簽到統計", description="查看某身分組的簽到與未簽到成員")
