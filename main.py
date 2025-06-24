@@ -120,29 +120,31 @@ async def 清空出席(interaction: discord.Interaction):
     attendance_data.clear()
     await interaction.response.send_message("✅ 所有出席資料已清空", ephemeral=False)
     
-@bot.tree.command(name="簽到統計", description="查看某身分組的簽到人數")
+@bot.tree.command(name="簽到統計", description="查看某身分組的簽到與未簽到成員")
 @app_commands.describe(role="想要統計的身分組")
 async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
     if not interaction.user.guild_permissions.administrator:
         await interaction.response.send_message("❌ 你沒有權限使用這個指令。", ephemeral=True)
         return
 
-    guild = interaction.guild
-    total = 0
-    matched_names = []
+    signed_in = []
+    not_signed_in = []
 
     for member in role.members:
-        print(f"Member: {member.display_name} - ID: {member.id} - In attendance_data? {member.id in attendance_data}")
-        uid = member.id
-        if uid in attendance_data:
-            total += 1
-            matched_names.append(member.display_name)
+        if member.id in attendance_data:
+            signed_in.append(member.display_name)
+        else:
+            not_signed_in.append(member.display_name)
 
-    await interaction.response.send_message(
-        f"📊 身分組 **{role.name}** 中共有 **{total}** 人簽到過。\n"
-        f"{'、'.join(matched_names) if matched_names else '（無人簽到）'}",
-        ephemeral=True
+    msg = (
+        f"📊 身分組 **{role.name}** 簽到狀況：\n"
+        f"✅ 已簽到：{len(signed_in)} 人\n"
+        f"{'、'.join(signed_in) if signed_in else '（無人簽到）'}\n\n"
+        f"❌ 未簽到：{len(not_signed_in)} 人\n"
+        f"{'、'.join(not_signed_in) if not_signed_in else '（全員簽到）'}"
     )
+
+    await interaction.response.send_message(msg, ephemeral=True)
 
 @bot.command()
 async def clear_attendance(ctx):
