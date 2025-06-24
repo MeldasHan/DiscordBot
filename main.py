@@ -25,22 +25,25 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 attendance_data = {}
 
 class AttendanceView(View):
-    def __init__(self, user):
+    def __init__(self):
         super().__init__(timeout=None)
-        self.user = user
 
     async def handle_selection(self, interaction: Interaction, time_label: str):
-        if self.user in attendance_data:
-            await interaction.response.send_message(f"{self.user} 已經出席過囉！", ephemeral=True)
+        user = str(interaction.user)
+
+        if user in attendance_data:
+            await interaction.response.send_message(f"{user} 已經出席過囉！", ephemeral=True)
         else:
-            attendance_data[self.user] = time_label
+            attendance_data[user] = time_label
             data = {
-                DISCORD_NAME_ENTRY: self.user,
+                DISCORD_NAME_ENTRY: user,
                 TIME_ENTRY: time_label,
             }
             response = requests.post(GOOGLE_FORM_URL, data=data)
-            await interaction.response.send_message(f"{self.user} 選擇了：{time_label}，已成功登記 ✅", ephemeral=True)
-            print(f"📨 Submitted for {self.user}: {time_label} - Status: {response.status_code}")
+            await interaction.response.send_message(
+                f"✅ {user} 選擇了：{time_label}，出席已登記", ephemeral=False
+            )
+            print(f"📨 Submitted for {user}: {time_label} - Status: {response.status_code}")
 
     @discord.ui.button(label="19:30", style=ButtonStyle.primary)
     async def btn_1930(self, interaction: Interaction, button: Button):
