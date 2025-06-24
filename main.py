@@ -33,7 +33,7 @@ class AttendanceView(View):
         user = member.display_name if member else interaction.user.name
 
         if user in attendance_data:
-            await interaction.response.send_message(f"{user} 已經出席過囉！", ephemeral=True)
+            await interaction.response.send_message(f"{user} 已經出席過囉！", ephemeral=False)
         else:
             attendance_data[user] = time_label
             data = {
@@ -42,7 +42,7 @@ class AttendanceView(View):
             }
             response = requests.post(GOOGLE_FORM_URL, data=data)
             await interaction.response.send_message(
-                f"✅ {user} 選擇了：{time_label}，出席已登記", ephemeral=False
+                f"✅ {user} 選擇了：{time_label}，出席已登記", ephemeral=True
             )
             print(f"📨 Submitted for {user}: {time_label} - Status: {response.status_code}")
 
