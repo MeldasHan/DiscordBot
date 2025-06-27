@@ -135,14 +135,6 @@ def fetch_attendance_from_sheet():
     except Exception as e:
         print(f"❌ 發生錯誤：{e}")
 
-@bot.event
-async def on_ready():
-    try:
-        print("🟢 on_ready() 觸發！")
-        print(f"✅ Logged in as {bot.user}")
-    except Exception as e:
-        print(f"❌ on_ready() 出錯：{e}")
-
 @bot.tree.command(name="出席", description="出席說明")
 async def 出席(interaction: discord.Interaction):
     texts = get_locale_text(str(interaction.locale))
@@ -183,6 +175,8 @@ async def 清空出席(interaction: discord.Interaction):
 @bot.tree.command(name="簽到統計", description="查看某身分組的簽到與未簽到成員")
 @app_commands.describe(role="想要統計的身分組")
 async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
+    fetch_attendance_from_sheet()  # 每次查詢都先同步
+    print("🔍 Current attendance_data:", attendance_data)
     allowed_role_ids = [983698693431640064, 1229072929636093973, 983703371871563807, 983708819215482911, 1103689405752954960, 1317669500644229130]
 
     if not interaction.user.guild_permissions.administrator:
@@ -217,6 +211,5 @@ async def clear_attendance(ctx):
     await ctx.send("✅ 所有簽到資料已清除")
 
 print(f"環境變數 TOKEN: {TOKEN}")
-# 先印出 attendance_data 內容
-# keep_alive()
+keep_alive()
 bot.run(TOKEN)
