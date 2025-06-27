@@ -120,12 +120,15 @@ def fetch_attendance_from_sheet() -> str:
     global attendance_data
     try:
         response = requests.get(os.getenv("GOOGLE_FETCH_URL"))
+        print("🔔 Response status:", response.status_code)
+        print("🔔 Response text:", response.text)  # 先看文字是否正常
+        
         if response.status_code == 200:
-            rows = response.json()
+            rows = response.json()  # 這裡解析成功
             attendance_data.clear()
             for row in rows:
-                user = row.get("Discord名稱") or row.get("discord名")
-                time = row.get("時間") or row.get("出席時間")
+                user = row.get("DC ID")  # 這裡改成 "DC ID" 才對
+                time = row.get("出席時間")
                 if user and time:
                     attendance_data[user] = time
             return f"✅ 成功同步 {len(attendance_data)} 筆出席資料"
@@ -201,7 +204,11 @@ async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
 
     msg = (
         f"{sync_status}\n\n"  # ⬅️ 同步狀態加在最前面
-        
+        f"📊 身分組 **{role.name}** 簽到狀況：\n"
+        f"✅ 已簽到：{len(signed_in)} 人\n"
+        f"{'、'.join(signed_in) if signed_in else '（無人簽到）'}\n\n"
+        f"❌ 未簽到：{len(not_signed_in)} 人\n"
+        f"{'、'.join(not_signed_in) if not_signed_in else '（全員簽到）'}"
     )
 
     await interaction.followup.send(msg, ephemeral=True)
