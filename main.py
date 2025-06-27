@@ -134,7 +134,7 @@ def fetch_attendance_from_sheet() -> str:
                         user_id = int(user)
                         attendance_data[user_id] = time
                     except ValueError:
-                        print(f"⚠️ 無法轉換 user_id: {user_id_str}")
+                        print(f"⚠️ 無法轉換 user_id: {user}")
             return f"✅ 成功同步 {len(attendance_data)} 筆出席資料"
         else:
             return f"⚠️ Google Script 回傳非 200：{response.status_code}"
