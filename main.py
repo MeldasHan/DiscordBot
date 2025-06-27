@@ -130,7 +130,11 @@ def fetch_attendance_from_sheet() -> str:
                 user = row.get("DC ID")  # 這裡改成 "DC ID" 才對
                 time = row.get("出席時間")
                 if user and time:
-                    attendance_data[user] = time
+                    try:
+                        user_id = int(user)
+                        attendance_data[user_id] = time
+                    except ValueError:
+                        print(f"⚠️ 無法轉換 user_id: {user_id_str}")
             return f"✅ 成功同步 {len(attendance_data)} 筆出席資料"
         else:
             return f"⚠️ Google Script 回傳非 200：{response.status_code}"
@@ -197,7 +201,7 @@ async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
     signed_in = []
     not_signed_in = []
 
-    for member in role.members:
+    for member.id in role.members:
         # 根據你資料的 key 是名稱或 ID，這裡要一致
         if member.display_name in attendance_data:
             signed_in.append(member.display_name)
