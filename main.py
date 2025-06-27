@@ -189,7 +189,7 @@ async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
 
     # 建議這邊改成非阻塞，或加上 try-except 防止出錯
     try:
-        fetch_attendance_from_sheet()
+        sync_status = fetch_attendance_from_sheet()  # 同步，並取得狀態文字
     except Exception as e:
         await interaction.followup.send(f"❌ 同步失敗: {e}", ephemeral=True)
         return
