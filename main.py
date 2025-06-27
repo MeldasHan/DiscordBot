@@ -201,9 +201,9 @@ async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
     signed_in = []
     not_signed_in = []
 
-    for member.id in role.members:
+    for member.o in role.members:
         # 根據你資料的 key 是名稱或 ID，這裡要一致
-        if member.display_name in attendance_data:
+        if member.id in attendance_data:
             signed_in.append(member.display_name)
         else:
             not_signed_in.append(member.display_name)
