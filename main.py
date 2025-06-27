@@ -137,12 +137,11 @@ def fetch_attendance_from_sheet():
 
 @bot.event
 async def on_ready():
-    print(f"✅ Logged in as {bot.user}")
     try:
-        synced = await bot.tree.sync()
-        print(f"✅ 已同步 {len(synced)} 個斜線指令")
+        print("🟢 on_ready() 觸發！")
+        print(f"✅ Logged in as {bot.user}")
     except Exception as e:
-        print(f"❌ 同步指令失敗: {e}")
+        print(f"❌ on_ready() 出錯：{e}")
 
 @bot.tree.command(name="出席", description="出席說明")
 async def 出席(interaction: discord.Interaction):
@@ -219,7 +218,5 @@ async def clear_attendance(ctx):
 
 print(f"環境變數 TOKEN: {TOKEN}")
 # 先印出 attendance_data 內容
-fetch_attendance_from_sheet()  # ✅ 這裡加入同步資料
-print("🔍 Current attendance_data:", attendance_data)
-keep_alive()
+# keep_alive()
 bot.run(TOKEN)
