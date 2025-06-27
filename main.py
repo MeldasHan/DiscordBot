@@ -116,7 +116,7 @@ class AttendanceView(View):
             )
             print(f"📨 Submitted for {user}: {time_label} - Status: {response.status_code}")
             
-def fetch_attendance_from_sheet():
+def fetch_attendance_from_sheet() -> str:
     global attendance_data
     try:
         response = requests.get(os.getenv("GOOGLE_FETCH_URL"))
@@ -124,16 +124,15 @@ def fetch_attendance_from_sheet():
             rows = response.json()
             attendance_data.clear()
             for row in rows:
-                user = row.get("Discord名稱") or row.get("discord名")  # 根據你的表單標題
-                time = row.get("時間") or row.get("出席時間")  # 同樣看表單的欄位名
+                user = row.get("Discord名稱") or row.get("discord名")
+                time = row.get("時間") or row.get("出席時間")
                 if user and time:
-                    # 將 user 名稱作為 key（或改為 ID 也行）
                     attendance_data[user] = time
-            print(f"✅ 已從表單載入 {len(attendance_data)} 筆出席資料")
+            return f"✅ 成功同步 {len(attendance_data)} 筆出席資料"
         else:
-            print(f"⚠️ 無法取得出席表單資料：{response.status_code}")
+            return f"⚠️ Google Script 回傳非 200：{response.status_code}"
     except Exception as e:
-        print(f"❌ 發生錯誤：{e}")
+        return f"❌ 同步失敗：{e}"
 
 @bot.tree.command(name="出席", description="出席說明")
 async def 出席(interaction: discord.Interaction):
@@ -175,9 +174,14 @@ async def 清空出席(interaction: discord.Interaction):
 @bot.tree.command(name="簽到統計", description="查看某身分組的簽到與未簽到成員")
 @app_commands.describe(role="想要統計的身分組")
 async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
-    fetch_attendance_from_sheet()  # 每次查詢都先同步
+    sync_status = fetch_attendance_from_sheet()  # 同步，並取得狀態文字
     print("🔍 Current attendance_data:", attendance_data)
-    allowed_role_ids = [983698693431640064, 1229072929636093973, 983703371871563807, 983708819215482911, 1103689405752954960, 1317669500644229130]
+
+    allowed_role_ids = [
+        983698693431640064, 1229072929636093973,
+        983703371871563807, 983708819215482911,
+        1103689405752954960, 1317669500644229130
+    ]
 
     if not interaction.user.guild_permissions.administrator:
         if not any(r.id in allowed_role_ids for r in interaction.user.roles):
@@ -196,6 +200,7 @@ async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
             not_signed_in.append(member.display_name)
 
     msg = (
+        f"{sync_status}\n\n"  # ⬅️ 同步狀態加在最前面
         f"📊 身分組 **{role.name}** 簽到狀況：\n"
         f"✅ 已簽到：{len(signed_in)} 人\n"
         f"{'、'.join(signed_in) if signed_in else '（無人簽到）'}\n\n"
