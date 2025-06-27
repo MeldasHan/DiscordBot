@@ -138,7 +138,6 @@ def fetch_attendance_from_sheet():
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
-    fetch_attendance_from_sheet()  # ✅ 這裡加入同步資料
     try:
         synced = await bot.tree.sync()
         print(f"✅ 已同步 {len(synced)} 個斜線指令")
@@ -220,6 +219,7 @@ async def clear_attendance(ctx):
 
 print(f"環境變數 TOKEN: {TOKEN}")
 # 先印出 attendance_data 內容
+fetch_attendance_from_sheet()  # ✅ 這裡加入同步資料
 print("🔍 Current attendance_data:", attendance_data)
 keep_alive()
 bot.run(TOKEN)
