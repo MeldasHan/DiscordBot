@@ -173,18 +173,12 @@ async def 清空出席(interaction: discord.Interaction):
 
     # ✅ 改用 followup.send，而不是 response.send_message
     await interaction.followup.send("✅ 所有出席資料已清空", ephemeral=False)
-    
+
 @bot.tree.command(name="簽到統計", description="查看某身分組的簽到與未簽到成員")
 @app_commands.describe(role="想要統計的身分組")
 async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
-    sync_status = fetch_attendance_from_sheet()  # 同步，並取得狀態文字
-    print("🔍 Current attendance_data:", attendance_data)
-
-    allowed_role_ids = [
-        983698693431640064, 1229072929636093973,
-        983703371871563807, 983708819215482911,
-        1103689405752954960, 1317669500644229130
-    ]
+    allowed_role_ids = [983698693431640064, 1229072929636093973, 983703371871563807,
+                        983708819215482911, 1103689405752954960, 1317669500644229130]
 
     if not interaction.user.guild_permissions.administrator:
         if not any(r.id in allowed_role_ids for r in interaction.user.roles):
@@ -193,11 +187,19 @@ async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
 
     await interaction.response.defer(ephemeral=True)
 
+    # 建議這邊改成非阻塞，或加上 try-except 防止出錯
+    try:
+        fetch_attendance_from_sheet()
+    except Exception as e:
+        await interaction.followup.send(f"❌ 同步失敗: {e}", ephemeral=True)
+        return
+
     signed_in = []
     not_signed_in = []
 
     for member in role.members:
-        if member.id in attendance_data:
+        # 根據你資料的 key 是名稱或 ID，這裡要一致
+        if member.display_name in attendance_data:
             signed_in.append(member.display_name)
         else:
             not_signed_in.append(member.display_name)
