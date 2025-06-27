@@ -97,17 +97,16 @@ class AttendanceView(View):
         texts = get_locale_text(str(interaction.locale))
         member = interaction.guild.get_member(interaction.user.id)
         user = member.display_name if member else interaction.user.name
-        user_id = interaction.user.id
 
-        if user_id in attendance_data:
+        if user in attendance_data:
             await interaction.response.send_message(
                 texts["already_checked"].replace("{user}", user), ephemeral=True
             )
         else:
-            attendance_data[user_id] = time_label
+            attendance_data[user] = time_label  # ✅ 用 display name 作為 key
 
             data = {
-                DISCORD_NAME_ENTRY: user,
+                DISCORD_NAME_ENTRY: user,  # 表單裡這是暱稱欄位
                 TIME_ENTRY: time_label,
             }
             response = requests.post(GOOGLE_FORM_URL, data=data)
@@ -115,6 +114,7 @@ class AttendanceView(View):
                 texts["checked_success"].format(user=user, time=time_label), ephemeral=True
             )
             print(f"📨 Submitted for {user}: {time_label} - Status: {response.status_code}")
+
             
 def fetch_attendance_from_sheet() -> str:
     global attendance_data
@@ -130,11 +130,7 @@ def fetch_attendance_from_sheet() -> str:
                 user = row.get("DC ID")  # 這裡改成 "DC ID" 才對
                 time = row.get("出席時間")
                 if user and time:
-                    try:
-                        user_id = int(user)
-                        attendance_data[user_id] = time
-                    except ValueError:
-                        print(f"⚠️ 無法轉換 user_id: {user}")
+                    attendance_data[user] = time
             return f"✅ 成功同步 {len(attendance_data)} 筆出席資料"
         else:
             return f"⚠️ Google Script 回傳非 200：{response.status_code}"
@@ -203,7 +199,7 @@ async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
 
     for member in role.members:
         # 根據你資料的 key 是名稱或 ID，這裡要一致
-        if member.id in attendance_data:
+        if member.display_name in attendance_data:
             signed_in.append(member.display_name)
         else:
             not_signed_in.append(member.display_name)
@@ -218,6 +214,8 @@ async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
     )
 
     await interaction.followup.send(msg, ephemeral=True)
+
+
 
 @bot.command()
 async def clear_attendance(ctx):
