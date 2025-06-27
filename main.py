@@ -135,7 +135,6 @@ def fetch_attendance_from_sheet():
     except Exception as e:
         print(f"❌ 發生錯誤：{e}")
 
-
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
@@ -186,14 +185,17 @@ async def 清空出席(interaction: discord.Interaction):
 @bot.tree.command(name="簽到統計", description="查看某身分組的簽到與未簽到成員")
 @app_commands.describe(role="想要統計的身分組")
 async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
-    allowed_role_ids = [983698693431640064, 1229072929636093973, 983703371871563807, 983708819215482911, 1103689405752954960, 1317669500644229130]  # 多個身分組ID
+    allowed_role_ids = [983698693431640064, 1229072929636093973, 983703371871563807, 983708819215482911, 1103689405752954960, 1317669500644229130]
 
-    # 先檢查是否為管理員
     if not interaction.user.guild_permissions.administrator:
-        # 如果不是管理員，再檢查是否有允許的身分組
         if not any(r.id in allowed_role_ids for r in interaction.user.roles):
             await interaction.response.send_message("❌ 你沒有權限使用這個指令。", ephemeral=True)
             return
+
+    await interaction.response.defer(ephemeral=True)
+
+    # 先印出 attendance_data 內容
+    print("🔍 Current attendance_data:", attendance_data)
 
     signed_in = []
     not_signed_in = []
@@ -212,7 +214,7 @@ async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
         f"{'、'.join(not_signed_in) if not_signed_in else '（全員簽到）'}"
     )
 
-    await interaction.response.send_message(msg, ephemeral=True)
+    await interaction.followup.send(msg, ephemeral=True)
 
 @bot.command()
 async def clear_attendance(ctx):
