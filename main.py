@@ -115,10 +115,31 @@ class AttendanceView(View):
                 texts["checked_success"].format(user=user, time=time_label), ephemeral=True
             )
             print(f"📨 Submitted for {user}: {time_label} - Status: {response.status_code}")
+            
+def fetch_attendance_from_sheet():
+    global attendance_data
+    try:
+        response = requests.get(os.getenv("GOOGLE_FETCH_URL"))
+        if response.status_code == 200:
+            rows = response.json()
+            attendance_data.clear()
+            for row in rows:
+                user = row.get("Discord名稱") or row.get("discord名")  # 根據你的表單標題
+                time = row.get("時間") or row.get("出席時間")  # 同樣看表單的欄位名
+                if user and time:
+                    # 將 user 名稱作為 key（或改為 ID 也行）
+                    attendance_data[user] = time
+            print(f"✅ 已從表單載入 {len(attendance_data)} 筆出席資料")
+        else:
+            print(f"⚠️ 無法取得出席表單資料：{response.status_code}")
+    except Exception as e:
+        print(f"❌ 發生錯誤：{e}")
+
 
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}")
+    fetch_attendance_from_sheet()  # ✅ 這裡加入同步資料
     try:
         synced = await bot.tree.sync()
         print(f"✅ 已同步 {len(synced)} 個斜線指令")
