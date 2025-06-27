@@ -194,9 +194,6 @@ async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
 
     await interaction.response.defer(ephemeral=True)
 
-    # 先印出 attendance_data 內容
-    print("🔍 Current attendance_data:", attendance_data)
-
     signed_in = []
     not_signed_in = []
 
@@ -222,5 +219,7 @@ async def clear_attendance(ctx):
     await ctx.send("✅ 所有簽到資料已清除")
 
 print(f"環境變數 TOKEN: {TOKEN}")
+# 先印出 attendance_data 內容
+print("🔍 Current attendance_data:", attendance_data)
 keep_alive()
 bot.run(TOKEN)
