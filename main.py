@@ -201,11 +201,7 @@ async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
 
     msg = (
         f"{sync_status}\n\n"  # ⬅️ 同步狀態加在最前面
-        f"📊 身分組 **{role.name}** 簽到狀況：\n"
-        f"✅ 已簽到：{len(signed_in)} 人\n"
-        f"{'、'.join(signed_in) if signed_in else '（無人簽到）'}\n\n"
-        f"❌ 未簽到：{len(not_signed_in)} 人\n"
-        f"{'、'.join(not_signed_in) if not_signed_in else '（全員簽到）'}"
+        
     )
 
     await interaction.followup.send(msg, ephemeral=True)
