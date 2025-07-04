@@ -223,5 +223,19 @@ async def clear_attendance(ctx):
     await ctx.send("✅ 所有簽到資料已清除")
 
 print(f"環境變數 TOKEN: {TOKEN}")
+
+# 啟動 Flask web server（給 UptimeRobot ping 使用）
 keep_alive()
-bot.run(TOKEN)
+
+# 加入條件避免非必要情況執行 bot.run()
+if os.getenv("RUN_DISCORD_BOT", "true").lower() == "true":
+    import asyncio
+
+    async def main():
+        await asyncio.sleep(5)  # 加點延遲避免連續重啟 API 過載
+        await bot.start(TOKEN)
+
+    asyncio.run(main())
+else:
+    print("⏸️ UptimeRobot pinged: 跳過 bot.run()")
+
