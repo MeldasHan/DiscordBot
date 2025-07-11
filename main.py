@@ -210,6 +210,13 @@ async def 同步資料(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)  # 預先回應，避免 3 秒 Timeout
     sync_status = fetch_attendance_from_sheet()
     await interaction.followup.send(sync_status, ephemeral=True)
+    
+@bot.tree.command(name="同步指令", description="同步Bot的指令")
+@commands.is_owner()
+async def sync(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    synced = await bot.tree.sync()
+    await interaction.followup.send(f"Synced {len(synced)} commands.", ephemeral=True)    
 
 @bot.command()
 async def clear_attendance(ctx):
@@ -225,6 +232,9 @@ if os.getenv("RUN_DISCORD_BOT", "true").lower() == "true":
         await asyncio.sleep(5)  # 延遲以保證 Google Script 不過載
         fetch_attendance_from_sheet()
         print(f"🔄 啟動時自動同步結果：{last_sync_status}")
+        
+        synced = await bot.tree.sync()
+        print(f"✅ 啟動時同步了 {len(synced)} 個指令")
         await bot.start(TOKEN)
 
     asyncio.run(main())
@@ -232,14 +242,5 @@ if os.getenv("RUN_DISCORD_BOT", "true").lower() == "true":
 else:
     print("⏸️ UptimeRobot pinged: 跳過 bot.run()")
     keep_alive()  # 只開 Flask server，不跑 bot
-    
-@bot.event
-async def on_ready():
-    print(f"Logged in as {bot.user} (ID: {bot.user.id})")
-    try:
-        synced = await bot.tree.sync()
-        print(f"✅ on_ready 同步了 {len(synced)} 個指令")
-    except Exception as e:
-        print(f"❌ 同步失敗: {e}")
 
 
