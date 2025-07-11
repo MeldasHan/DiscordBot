@@ -222,7 +222,9 @@ async def clear_attendance(ctx):
     attendance_data.clear()
     await ctx.send("✅ 所有簽到資料已清除")
 
-print(f"環境變數 TOKEN: {TOKEN}")
+print("RUN_DISCORD_BOT raw:", os.getenv("RUN_DISCORD_BOT"))
+print("RUN_DISCORD_BOT normalized:", os.getenv("RUN_DISCORD_BOT", "true").lower())
+print("判斷條件是否成立:", os.getenv("RUN_DISCORD_BOT", "true").lower() == "true")
 
 # 啟動 Flask web server（給 UptimeRobot ping 使用）
 keep_alive()
