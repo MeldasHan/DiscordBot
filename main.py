@@ -232,4 +232,14 @@ if os.getenv("RUN_DISCORD_BOT", "true").lower() == "true":
 else:
     print("⏸️ UptimeRobot pinged: 跳過 bot.run()")
     keep_alive()  # 只開 Flask server，不跑 bot
+    
+@bot.event
+async def on_ready():
+    print(f"Logged in as {bot.user} (ID: {bot.user.id})")
+    try:
+        synced = await bot.tree.sync()
+        print(f"✅ on_ready 同步了 {len(synced)} 個指令")
+    except Exception as e:
+        print(f"❌ 同步失敗: {e}")
+
 
