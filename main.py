@@ -222,6 +222,15 @@ async def sync(interaction: discord.Interaction):
 async def clear_attendance(ctx):
     attendance_data.clear()
     await ctx.send("✅ 所有簽到資料已清除")
+    
+@bot.event
+async def on_ready():
+    print(f"Logged in as {bot.user} (ID: {bot.user.id})")
+    try:
+        synced = await bot.tree.sync()
+        print(f"✅ on_ready 同步了 {len(synced)} 個指令")
+    except Exception as e:
+        print(f"❌ 同步失敗: {e}")
 
 # 加入條件避免非必要情況執行 bot.run()
 if os.getenv("RUN_DISCORD_BOT", "true").lower() == "true":
@@ -232,9 +241,6 @@ if os.getenv("RUN_DISCORD_BOT", "true").lower() == "true":
         await asyncio.sleep(5)  # 延遲以保證 Google Script 不過載
         fetch_attendance_from_sheet()
         print(f"🔄 啟動時自動同步結果：{last_sync_status}")
-        
-        synced = await bot.tree.sync()
-        print(f"✅ 啟動時同步了 {len(synced)} 個指令")
         await bot.start(TOKEN)
 
     asyncio.run(main())
