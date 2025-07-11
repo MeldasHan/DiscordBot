@@ -187,13 +187,6 @@ async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
 
     await interaction.response.defer(ephemeral=True)
 
-    # 建議這邊改成非阻塞，或加上 try-except 防止出錯
-    try:
-        sync_status = fetch_attendance_from_sheet()  # 同步，並取得狀態文字
-    except Exception as e:
-        await interaction.followup.send(f"❌ 同步失敗: {e}", ephemeral=True)
-        return
-
     signed_in = []
     not_signed_in = []
 
@@ -231,18 +224,18 @@ keep_alive()
 
 # 加入條件避免非必要情況執行 bot.run()
 if os.getenv("RUN_DISCORD_BOT", "true").lower() == "true":
+    keep_alive()  # ✅ 先開啟 Flask ping server（非阻塞）
+    
     import asyncio
-
     async def main():
-        await asyncio.sleep(5)  # 加點延遲避免連續重啟 API 過載
-
-        # ✅ 第一次啟動時同步資料
+        await asyncio.sleep(5)  # 延遲以保證 Google Script 不過載
         sync_status = fetch_attendance_from_sheet()
         print(f"🔄 啟動時自動同步結果：{sync_status}")
-
         await bot.start(TOKEN)
 
     asyncio.run(main())
+
 else:
     print("⏸️ UptimeRobot pinged: 跳過 bot.run()")
+    keep_alive()  # 只開 Flask server，不跑 bot
 
