@@ -233,6 +233,11 @@ if os.getenv("RUN_DISCORD_BOT", "true").lower() == "true":
 
     async def main():
         await asyncio.sleep(5)  # 加點延遲避免連續重啟 API 過載
+
+        # ✅ 第一次啟動時同步資料
+        sync_status = fetch_attendance_from_sheet()
+        print(f"🔄 啟動時自動同步結果：{sync_status}")
+
         await bot.start(TOKEN)
 
     asyncio.run(main())
