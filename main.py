@@ -178,7 +178,11 @@ async def 清空出席(interaction: discord.Interaction):
 @bot.tree.command(name="簽到統計", description="查看某身分組的簽到與未簽到成員")
 @app_commands.describe(role="想要統計的身分組")
 async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
-    allowed_role_ids = [...]  # 你的授權清單
+    allowed_role_ids = [
+        983698693431640064, 1229072929636093973,
+        983703371871563807, 983708819215482911,
+        1103689405752954960, 1317669500644229130
+    ]
 
     if not interaction.user.guild_permissions.administrator:
         if not any(r.id in allowed_role_ids for r in interaction.user.roles):
