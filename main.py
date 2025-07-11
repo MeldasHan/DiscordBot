@@ -117,25 +117,26 @@ class AttendanceView(View):
 
             
 def fetch_attendance_from_sheet() -> str:
-    global attendance_data
+    global attendance_data, last_sync_status, last_sync_time
     try:
         response = requests.get(os.getenv("GOOGLE_FETCH_URL"))
-        print("🔔 Response status:", response.status_code)
-        print("🔔 Response text:", response.text)  # 先看文字是否正常
-        
         if response.status_code == 200:
-            rows = response.json()  # 這裡解析成功
+            rows = response.json()
             attendance_data.clear()
             for row in rows:
-                user = row.get("DC ID")  # 這裡改成 "DC ID" 才對
+                user = row.get("DC ID")
                 time = row.get("出席時間")
                 if user and time:
                     attendance_data[user] = time
-            return f"✅ 成功同步 {len(attendance_data)} 筆出席資料"
+            last_sync_time = datetime.now()
+            last_sync_status = f"✅ 成功同步 {len(attendance_data)} 筆出席資料 (最後同步時間：{last_sync_time.strftime('%Y-%m-%d %H:%M:%S')})"
+            return last_sync_status
         else:
-            return f"⚠️ Google Script 回傳非 200：{response.status_code}"
+            last_sync_status = f"⚠️ Google Script 回傳非 200：{response.status_code}"
+            return last_sync_status
     except Exception as e:
-        return f"❌ 同步失敗：{e}"
+        last_sync_status = f"❌ 同步失敗：{e}"
+        return last_sync_status
 
 @bot.tree.command(name="出席", description="出席說明")
 async def 出席(interaction: discord.Interaction):
@@ -177,8 +178,7 @@ async def 清空出席(interaction: discord.Interaction):
 @bot.tree.command(name="簽到統計", description="查看某身分組的簽到與未簽到成員")
 @app_commands.describe(role="想要統計的身分組")
 async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
-    allowed_role_ids = [983698693431640064, 1229072929636093973, 983703371871563807,
-                        983708819215482911, 1103689405752954960, 1317669500644229130]
+    allowed_role_ids = [...]  # 你的授權清單
 
     if not interaction.user.guild_permissions.administrator:
         if not any(r.id in allowed_role_ids for r in interaction.user.roles):
@@ -187,18 +187,11 @@ async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
 
     await interaction.response.defer(ephemeral=True)
 
-    signed_in = []
-    not_signed_in = []
-
-    for member in role.members:
-        # 根據你資料的 key 是名稱或 ID，這裡要一致
-        if member.display_name in attendance_data:
-            signed_in.append(member.display_name)
-        else:
-            not_signed_in.append(member.display_name)
+    signed_in = [m.display_name for m in role.members if m.display_name in attendance_data]
+    not_signed_in = [m.display_name for m in role.members if m.display_name not in attendance_data]
 
     msg = (
-        f"{sync_status}\n\n"  # ⬅️ 同步狀態加在最前面
+        f"{last_sync_status}\n\n"  # 顯示最後同步狀態
         f"📊 身分組 **{role.name}** 簽到狀況：\n"
         f"✅ 已簽到：{len(signed_in)} 人\n"
         f"{'、'.join(signed_in) if signed_in else '（無人簽到）'}\n\n"
@@ -207,13 +200,17 @@ async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
     )
 
     await interaction.followup.send(msg, ephemeral=True)
+    
+@bot.tree.command(name="同步資料", description="當Bot同步失敗時可以呼叫")
+async def 同步資料(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)  # 預先回應，避免 3 秒 Timeout
+    sync_status = fetch_attendance_from_sheet()
+    await interaction.followup.send(sync_status, ephemeral=True)
 
 @bot.command()
 async def clear_attendance(ctx):
     attendance_data.clear()
     await ctx.send("✅ 所有簽到資料已清除")
-
-global sync_status
 
 # 加入條件避免非必要情況執行 bot.run()
 if os.getenv("RUN_DISCORD_BOT", "true").lower() == "true":
@@ -222,8 +219,8 @@ if os.getenv("RUN_DISCORD_BOT", "true").lower() == "true":
     import asyncio
     async def main():
         await asyncio.sleep(5)  # 延遲以保證 Google Script 不過載
-        sync_status = fetch_attendance_from_sheet()
-        print(f"🔄 啟動時自動同步結果：{sync_status}")
+        fetch_attendance_from_sheet()
+        print(f"🔄 啟動時自動同步結果：{last_sync_status}")
         await bot.start(TOKEN)
 
     asyncio.run(main())
