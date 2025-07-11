@@ -128,7 +128,7 @@ def fetch_attendance_from_sheet() -> str:
                 time = row.get("出席時間")
                 if user and time:
                     attendance_data[user] = time
-            last_sync_time = datetime.now()
+            last_sync_time = datetime.utcnow() + timedelta(hours=8)
             last_sync_status = f"✅ 成功同步 {len(attendance_data)} 筆出席資料 (最後同步時間：{last_sync_time.strftime('%Y-%m-%d %H:%M:%S')})"
             return last_sync_status
         else:
