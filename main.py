@@ -224,6 +224,9 @@ async def clear_attendance(ctx):
 
 print(f"環境變數 TOKEN: {TOKEN}")
 
+# 啟動 Flask web server（給 UptimeRobot ping 使用）
+keep_alive()
+
 # 加入條件避免非必要情況執行 bot.run()
 if os.getenv("RUN_DISCORD_BOT", "true").lower() == "true":
     import asyncio
@@ -240,7 +243,4 @@ if os.getenv("RUN_DISCORD_BOT", "true").lower() == "true":
     asyncio.run(main())
 else:
     print("⏸️ UptimeRobot pinged: 跳過 bot.run()")
-    
-# 啟動 Flask web server（給 UptimeRobot ping 使用）
-keep_alive()
 
