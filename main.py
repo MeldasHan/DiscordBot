@@ -54,46 +54,28 @@ def get_locale_text(locale: str):
         }
 
 class AttendanceView(View):
-    def __init__(self, interaction: Interaction):
+    def __init__(self):
         super().__init__(timeout=None)
-        self.offset = self._estimate_utc_offset(interaction)
-        self.locale = str(interaction.locale)
 
         time_options = ["19:30", "19:45", "20:00"]
         for t in time_options:
-            label = self._convert_time_label(t)
-            self.add_item(self._make_button(label, t, ButtonStyle.primary))
+            self.add_item(self._make_button(label=t, time_value=t, style=ButtonStyle.primary))
 
         self.add_item(self._make_button("領土期間", "領土期間", ButtonStyle.secondary))
         self.add_item(self._make_button("無法出席", "無法出席", ButtonStyle.danger))
 
-    def _convert_time_label(self, base_time_str):
-        base_time = datetime.strptime(base_time_str, "%H:%M")
-        local_time = base_time + timedelta(hours=self.offset)
-        return local_time.strftime("%H:%M")
-
-    def _estimate_utc_offset(self, interaction):
-        locale = str(interaction.locale)
-        if "zh" in locale:
-            return 8 - 8
-        elif "ja" in locale or "ko" in locale:
-            return 9 - 8
-        elif "en" in locale:
-            return 0 - 8
-        else:
-            return 0
-
     def _make_button(self, label, time_value, style):
-        view_self = self
+        button = Button(label=label, style=style, custom_id=f"attend:{time_value}")
 
         async def callback(interaction: Interaction):
-            await view_self.handle_selection(interaction, time_value)
+            await AttendanceView.handle_selection(interaction, time_value)
 
-        button = Button(label=label, style=style)
         button.callback = callback
         return button
 
-    async def handle_selection(self, interaction: Interaction, time_label: str):
+    @staticmethod
+    async def handle_selection(interaction: Interaction, time_label: str):
+        # 和你原來的 handle_selection 相同，只是現在是 staticmethod
         texts = get_locale_text(str(interaction.locale))
         member = interaction.guild.get_member(interaction.user.id)
         user = member.display_name if member else interaction.user.name
@@ -103,18 +85,19 @@ class AttendanceView(View):
                 texts["already_checked"].replace("{user}", user), ephemeral=True
             )
         else:
-            attendance_data[user] = time_label  # ✅ 用 display name 作為 key
+            attendance_data[user] = time_label
+            try:
+                response = requests.post(GOOGLE_FORM_URL, data={
+                    DISCORD_NAME_ENTRY: user,
+                    TIME_ENTRY: time_label,
+                }, timeout=3)
+                print(f"📨 Submitted for {user}: {time_label} - Status: {response.status_code}")
+            except requests.RequestException as e:
+                print(f"❌ Google 表單錯誤: {e}")
 
-            data = {
-                DISCORD_NAME_ENTRY: user,  # 表單裡這是暱稱欄位
-                TIME_ENTRY: time_label,
-            }
-            response = requests.post(GOOGLE_FORM_URL, data=data)
             await interaction.response.send_message(
                 texts["checked_success"].format(user=user, time=time_label), ephemeral=True
             )
-            print(f"📨 Submitted for {user}: {time_label} - Status: {response.status_code}")
-
             
 def fetch_attendance_from_sheet() -> str:
     global attendance_data, last_sync_status, last_sync_time
@@ -141,9 +124,11 @@ def fetch_attendance_from_sheet() -> str:
 @bot.tree.command(name="出席", description="出席說明")
 async def 出席(interaction: discord.Interaction):
     texts = get_locale_text(str(interaction.locale))
-    await interaction.response.defer(ephemeral=False)
-    view = AttendanceView(interaction)
-    await interaction.followup.send(texts["select_prompt"], view=view, ephemeral=False)
+    await interaction.response.send_message(
+        texts["select_prompt"],
+        view=AttendanceView(),
+        ephemeral=False
+    )
     
 @bot.tree.command(name="清空出席", description="清空所有出席資料")
 async def 清空出席(interaction: discord.Interaction):
@@ -228,6 +213,7 @@ async def on_ready():
     print(f"Logged in as {bot.user} (ID: {bot.user.id})")
     try:
         synced = await bot.tree.sync()
+        bot.add_view(AttendanceView())  # ✅ 註冊 Persistent View
         print(f"✅ on_ready 同步了 {len(synced)} 個指令")
     except Exception as e:
         print(f"❌ 同步失敗: {e}")
