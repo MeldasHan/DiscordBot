@@ -6,7 +6,7 @@ from discord.ui import View, Button
 from discord import app_commands
 import requests
 from dotenv import load_dotenv
-from keep_alive import keep_alive
+# from keep_alive import keep_alive
 from datetime import datetime, timedelta
 
 load_dotenv()
@@ -54,15 +54,33 @@ def get_locale_text(locale: str):
         }
 
 class AttendanceView(View):
-    def __init__(self):
+    def __init__(self, interaction: Interaction):
         super().__init__(timeout=None)
+        self.offset = self._estimate_utc_offset(interaction)
 
         time_options = ["19:30", "19:45", "20:00"]
         for t in time_options:
-            self.add_item(self._make_button(label=t, time_value=t, style=ButtonStyle.primary))
+            label = self._convert_time_label(t)  # 顯示使用者當地時間
+            self.add_item(self._make_button(label=label, time_value=t, style=ButtonStyle.primary))
 
         self.add_item(self._make_button("領土期間", "領土期間", ButtonStyle.secondary))
         self.add_item(self._make_button("無法出席", "無法出席", ButtonStyle.danger))
+
+    def _estimate_utc_offset(self, interaction: Interaction) -> int:
+        locale = str(interaction.locale)
+        if "zh" in locale:
+            return 8 - 8
+        elif "ja" in locale or "ko" in locale:
+            return 9 - 8
+        elif "en" in locale:
+            return 0 - 8
+        else:
+            return 0  # fallback
+
+    def _convert_time_label(self, base_time_str):
+        base_time = datetime.strptime(base_time_str, "%H:%M")
+        local_time = base_time + timedelta(hours=self.offset)
+        return local_time.strftime("%H:%M")
 
     def _make_button(self, label, time_value, style):
         button = Button(label=label, style=style, custom_id=f"attend:{time_value}")
@@ -75,7 +93,6 @@ class AttendanceView(View):
 
     @staticmethod
     async def handle_selection(interaction: Interaction, time_label: str):
-        # 和你原來的 handle_selection 相同，只是現在是 staticmethod
         texts = get_locale_text(str(interaction.locale))
         member = interaction.guild.get_member(interaction.user.id)
         user = member.display_name if member else interaction.user.name
@@ -126,7 +143,7 @@ async def 出席(interaction: discord.Interaction):
     texts = get_locale_text(str(interaction.locale))
     await interaction.response.send_message(
         texts["select_prompt"],
-        view=AttendanceView(),
+        view=AttendanceView(interaction),  # ✅ 傳入 interaction 給 View
         ephemeral=False
     )
     
@@ -176,16 +193,40 @@ async def 簽到統計(interaction: discord.Interaction, role: discord.Role):
 
     await interaction.response.defer(ephemeral=True)
 
-    signed_in = [m.display_name for m in role.members if m.display_name in attendance_data]
-    not_signed_in = [m.display_name for m in role.members if m.display_name not in attendance_data]
+    # 分類儲存簽到成員
+    categories = {
+        "19:30": [],
+        "19:45": [],
+        "20:00": [],
+        "領土期間": [],
+        "無法出席": [],
+    }
+
+    not_signed_in = []
+
+    for member in role.members:
+        name = member.display_name
+        if name in attendance_data:
+            time = attendance_data[name]
+            if time in categories:
+                categories[time].append(name)
+            else:
+                categories.setdefault("其他", []).append(name)  # 保底放進「其他」
+        else:
+            not_signed_in.append(name)
+
+    # 將各分類整理為字串
+    def format_group(title, members):
+        return f"**{title}**（{len(members)} 人）：{('、'.join(members)) if members else '（無）'}"
+
+    signed_in_msg = "\n".join([format_group(k, v) for k, v in categories.items()])
+    not_signed_msg = f"{len(not_signed_in)} 人：{'、'.join(not_signed_in) if not_signed_in else '（全員簽到）'}"
 
     msg = (
-        f"{last_sync_status}\n\n"  # 顯示最後同步狀態
-        f"📊 身分組 **{role.name}** 簽到狀況：\n"
-        f"✅ 已簽到：{len(signed_in)} 人\n"
-        f"{'、'.join(signed_in) if signed_in else '（無人簽到）'}\n\n"
-        f"❌ 未簽到：{len(not_signed_in)} 人\n"
-        f"{'、'.join(not_signed_in) if not_signed_in else '（全員簽到）'}"
+        f"{last_sync_status}\n\n"
+        f"📊 身分組 **{role.name}** 簽到狀況：\n\n"
+        f"{signed_in_msg}\n\n"
+        f"❌ 未簽到：{not_signed_msg}"
     )
 
     await interaction.followup.send(msg, ephemeral=True)
@@ -220,7 +261,7 @@ async def on_ready():
 
 # 加入條件避免非必要情況執行 bot.run()
 if os.getenv("RUN_DISCORD_BOT", "true").lower() == "true":
-    keep_alive()  # ✅ 先開啟 Flask ping server（非阻塞）
+    # keep_alive()  # ✅ 先開啟 Flask ping server（非阻塞）
     
     import asyncio
     async def main():
@@ -233,6 +274,6 @@ if os.getenv("RUN_DISCORD_BOT", "true").lower() == "true":
 
 else:
     print("⏸️ UptimeRobot pinged: 跳過 bot.run()")
-    keep_alive()  # 只開 Flask server，不跑 bot
+    # keep_alive()  # 只開 Flask server，不跑 bot
 
 
