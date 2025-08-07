@@ -261,7 +261,7 @@ async def on_ready():
 
 # 加入條件避免非必要情況執行 bot.run()
 if os.getenv("RUN_DISCORD_BOT", "true").lower() == "true":
-    # keep_alive()  # ✅ 先開啟 Flask ping server（非阻塞）
+    keep_alive()  # ✅ 先開啟 Flask ping server（非阻塞）
     
     import asyncio
     async def main():
